@@ -154,6 +154,7 @@ class DevicesPage(QWidget):
         self._table.setAlternatingRowColors(True)
         self._table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self._table.setSelectionMode(QAbstractItemView.SingleSelection)
+        self._table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self._table.setSortingEnabled(True)
         self._table.setColumnCount(6)
         self._table.setHorizontalHeaderLabels([
@@ -225,6 +226,8 @@ class DevicesPage(QWidget):
         self._progress.setVisible(True)
         self._table.setRowCount(0)
 
+        self._device_service.mark_all_offline()
+        
         self._scanner.start()
         logger.info("Scan started")
 
@@ -250,8 +253,12 @@ class DevicesPage(QWidget):
         self._scan_btn.setEnabled(True)
         self._stop_btn.setEnabled(False)
         self._progress.setVisible(False)
+        
+        # Load all devices (both online and offline) from DB to update the table
+        self._load_devices()
+        
         self._status_label.setText(
-            f"Found {len(devices)} device(s) online"
+            f"Scan complete. Found {len(devices)} device(s) online."
         )
 
     def _on_scan_error(self, error: str) -> None:

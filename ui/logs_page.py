@@ -96,6 +96,7 @@ class LogsPage(QWidget):
         self._table = QTableWidget()
         self._table.setAlternatingRowColors(True)
         self._table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self._table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self._table.setSortingEnabled(True)
         self._table.setColumnCount(4)
         self._table.setHorizontalHeaderLabels([

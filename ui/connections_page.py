@@ -105,6 +105,7 @@ class ConnectionsPage(QWidget):
         self._conn_table = QTableWidget()
         self._conn_table.setAlternatingRowColors(True)
         self._conn_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self._conn_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self._conn_table.setSortingEnabled(True)
         self._conn_table.setColumnCount(8)
         self._conn_table.setHorizontalHeaderLabels([
@@ -157,6 +158,7 @@ class ConnectionsPage(QWidget):
         cl = QVBoxLayout(client_panel)
         cl.addWidget(QLabel("Connected Clients"))
         self._client_list = QTableWidget()
+        self._client_list.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self._client_list.setColumnCount(1)
         self._client_list.setHorizontalHeaderLabels(["Address"])
         self._client_list.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
