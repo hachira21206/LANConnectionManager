@@ -1,0 +1,453 @@
+================================================================================
+          TỔNG QUAN VÀ GIẢI THÍCH CHI TIẾT ỨNG DỤNG LAN CONNECTION MANAGER
+================================================================================
+
+PHẦN 1: ỨNG DỤNG NÀY LÀ GÌ?
+--------------------------------------------------------------------------------
+LAN Connection Manager là một ứng dụng Desktop toàn diện, chuyên nghiệp dùng để
+quản lý, giám sát, phân tích và thực hiện các giao tiếp trong mạng cục bộ (LAN - 
+Local Area Network).
+
+1. Mục đích xây dựng:
+   - Được phát triển bằng ngôn ngữ Python 3.11+ kết hợp với thư viện đồ họa hiện 
+     đại PySide6 (Qt for Python).
+   - Phục vụ việc học tập, thực hành đồ án môn học Lập trình mạng (Network 
+     Programming), cũng như hỗ trợ quản trị viên hệ thống kiểm tra, chẩn đoán mạng 
+     cục bộ một cách trực quan.
+   - Hoạt động 100% OFFLINE: Không phụ thuộc vào kết nối Internet ra bên ngoài, 
+     toàn bộ dữ liệu được quản lý cục bộ qua cơ sở dữ liệu SQLite và lưu vết nhật 
+     ký tại chỗ.
+
+2. Công nghệ nền tảng (Tech Stack):
+   - Python 3.11+: Ngôn ngữ lập trình chính.
+   - PySide6 (Qt 6.5+): Xây dựng giao diện người dùng (GUI) đa nền tảng, mượt mà, 
+     hỗ trợ cơ chế Signal/Slot mạnh mẽ.
+   - Socket (TCP/IP & UDP): Xử lý truyền nhận dữ liệu tầng Transport trong mô hình mạng.
+   - threading & ThreadPoolExecutor, QThread: Xử lý đa luồng bất đồng bộ, giúp giao 
+     diện không bao giờ bị đơ (freeze) khi thực hiện các tác vụ mạng nặng.
+   - psutil: Thu thập thông tin phần cứng mạng, các kết nối TCP/UDP đang hoạt động 
+     của hệ điều hành và số liệu thống kê card mạng.
+   - sqlite3: Cơ sở dữ liệu nhúng lưu trữ thiết bị mạng, lịch sử kết nối và cài đặt.
+   - ipaddress: Xử lý tính toán địa chỉ IP, chia dải mạng và subnet/CIDR.
+   - subprocess: Thực hiện kiểm tra độ trễ (ping) thông qua lệnh ping của hệ điều hành.
+   - logging: Ghi nhận sự kiện ứng dụng ra file và bộ nhớ đệm (in-memory ring buffer).
+
+
+================================================================================
+PHẦN 2: DANH SÁCH CÁC PHÂN HỆ VÀ TÍNH NĂNG CHÍNH
+================================================================================
+
+Ứng dụng được tổ chức thành 7 phân hệ lớn có thể truy cập nhanh qua thanh điều hướng 
+(Sidebar):
+
+1. Bảng điều khiển tổng quan (Dashboard):
+   - Cung cấp cái nhìn toàn diện về cấu hình mạng cục bộ hiện tại.
+   - Hiển thị các thẻ chỉ số (metrics) thời gian thực về thiết bị, kết nối và lưu lượng.
+
+2. Quét và phát hiện thiết bị mạng (Device Scanner - Devices Page):
+   - Tự động dò quét toàn bộ các thiết bị đang trực tuyến (online) trong cùng subnet.
+   - Hỗ trợ quét theo dải IP tùy biến hoặc dải mạng CIDR.
+   - Phân giải tên máy (Hostname) và địa chỉ vật lý (MAC Address).
+
+3. Quản lý kết nối và Giao tiếp mạng (Connections Page):
+   Bao gồm 6 tab chức năng chuyên sâu:
+   - Tab 1: Kết nối đang hoạt động (Active Connections)
+   - Tab 2: Máy chủ TCP (TCP Server)
+   - Tab 3: Máy khách TCP (TCP Client)
+   - Tab 4: Giao tiếp UDP (UDP Listener & Sender)
+   - Tab 5: Trò chuyện nội bộ (LAN Chat)
+   - Tab 6: Truyền nhận tập tin (File Transfer)
+
+4. Giám sát lưu lượng mạng thời gian thực (Network Monitor - Monitor Page):
+   - Đồ thị đường sóng trực quan vẽ bằng QPainter hiển thị tốc độ Upload/Download.
+   - Đo lường chi tiết lưu lượng trên từng card mạng (Per-interface).
+   - Thống kê tổng số byte và số gói tin đã gửi/nhận.
+
+5. Nhật ký hệ thống và Chẩn đoán (System Logs - Logs Page):
+   - Trình xem nhật ký thời gian thực theo 4 cấp độ: DEBUG, INFO, WARNING, ERROR.
+   - Tìm kiếm, lọc, xuất file nhật ký và xóa dữ liệu log.
+
+6. Cài đặt hệ thống (Settings Page):
+   - Tùy chỉnh tham số mạng (timeout, số luồng quét, port mặc định).
+   - Chuyển đổi giao diện Sáng/Tối (Dark Theme / Light Theme).
+   - Quản lý và sao lưu cơ sở dữ liệu SQLite (Backup DB).
+
+7. Hệ thống Giao diện & Trải nghiệm người dùng (UI/UX):
+   - Giao diện phong cách Cyber Dark & Light hiện đại, thẩm mỹ cao.
+   - Hệ thống thông báo nổi (Toast Notification) có hiệu ứng hoạt họa mượt mà.
+   - Thiết kế bất đồng bộ hoàn toàn, bảo đảm an toàn luồng (Thread-safe).
+
+
+================================================================================
+PHẦN 3: GIẢI THÍCH CHI TIẾT TỪNG CHỨC NĂNG NHỎ TRONG CÁC PHÂN HỆ
+================================================================================
+
+--------------------------------------------------------------------------------
+1. BẢNG ĐIỀU KHIỂN TỔNG QUAN (DASHBOARD)
+--------------------------------------------------------------------------------
+Mục tiêu: Đóng vai trò là trung tâm chỉ huy (Command Center), tự động làm mới mỗi 
+5 giây để người dùng nắm bắt tình trạng mạng tức thì.
+
+Các chức năng nhỏ chi tiết:
+a) Khối thông tin mạng cục bộ (Network Overview Card):
+   - Interface: Tên card mạng đang kích hoạt và có kết nối mạng (vd: Wi-Fi, Ethernet).
+   - IPv4 Address: Địa chỉ IP nội bộ của máy tính đang chạy ứng dụng (vd: 192.168.1.15).
+   - Subnet Mask: Mặt nạ mạng con của kết nối (vd: 255.255.255.0).
+   - Gateway: Địa chỉ cổng mặc định nối tới Router mạng (vd: 192.168.1.1).
+   - Network: Địa chỉ dải mạng cơ sở (vd: 192.168.1.0).
+   - CIDR: Ký hiệu tiền tố mạng (vd: /24).
+   * Cơ chế kỹ thuật: Sử dụng `network_utils` để kiểm tra kết nối qua socket UDP 
+     thực nghiệm và truy vấn socket/psutil, tự làm mới sau mỗi 60 giây để tối ưu 
+     tài nguyên.
+
+b) Khối thẻ chỉ số thống kê hệ thống (System Metrics Cards):
+   - Thẻ "Total Devices": Tổng số thiết bị từng được phát hiện và lưu trong cơ sở 
+     dữ liệu SQLite.
+   - Thẻ "Online": Số lượng thiết bị hiện đang phản hồi tín hiệu trong mạng.
+   - Thẻ "Offline": Số lượng thiết bị trước đó có trong danh sách nhưng hiện không 
+     phản hồi.
+   - Thẻ "Active Connections": Tổng số phiên kết nối socket mạng đang hoạt động trên máy.
+   - Thẻ "TCP Connections": Số lượng kết nối đang sử dụng giao thức TCP.
+   - Thẻ "UDP Connections": Số lượng socket đang sử dụng giao thức UDP.
+   - Thẻ "Download Speed": Tốc độ tải dữ liệu thời gian thực (tự động định dạng: 
+     B/s, KB/s, MB/s).
+   - Thẻ "Upload Speed": Tốc độ truyền tải dữ liệu đi thời gian thực.
+   - Thẻ "Total Sent / Total Received": Tổng dung lượng dữ liệu mạng đã gửi và nhận 
+     kể từ khi khởi động hệ thống.
+   - Thẻ "Packets Sent / Packets Received": Tổng số gói tin gửi và nhận qua card mạng.
+
+
+--------------------------------------------------------------------------------
+2. QUÉT VÀ PHÁT HIỆN THIẾT BỊ MẠNG (DEVICE SCANNER)
+--------------------------------------------------------------------------------
+Mục tiêu: Rà soát toàn bộ mạng LAN để lập danh sách các máy tính, điện thoại, máy 
+in, thiết bị IoT đang kết nối.
+
+Các chức năng nhỏ chi tiết:
+a) Tùy chọn chế độ quét (Scan Mode):
+   - "Auto-detect Subnet": Tự động phát hiện dải mạng cục bộ dựa trên IP và Subnet 
+     Mask của máy tính, người dùng chỉ cần nhấn nút là quét được ngay.
+   - "Custom Subnet (CIDR)": Cho phép người dùng nhập thủ công một dải mạng cụ thể 
+     dưới dạng CIDR (ví dụ: 192.168.2.0/24, 10.0.0.0/24). Có tích hợp bộ kiểm tra 
+     tính hợp lệ (validate_subnet).
+   - "IP Range": Cho phép quét một dải IP tùy ý bằng cách chỉ định "Start IP" và 
+     "End IP" (ví dụ: từ 192.168.1.50 đến 192.168.1.100).
+b) Động cơ quét đa luồng (Concurrent Ping Engine):
+   - Sử dụng `ThreadPoolExecutor` kết hợp `QThread` (mặc định chạy đồng thời 50 luồng).
+   - Thay vì kiểm tra từng IP một cách tuần tự (mất nhiều phút), ứng dụng kiểm tra 
+     hàng loạt IP cùng lúc, giúp thời gian quét 254 địa chỉ chỉ mất vài giây.
+   - Có thể điều chỉnh thời gian chờ timeout và số luồng trong phần Cài đặt.
+c) Cơ chế dừng quét khẩn cấp (Stop Scan):
+   - Cung cấp nút "Stop" cho phép hủy quá trình quét bất kỳ lúc nào mà không gây treo máy.
+d) Phân giải thông tin thiết bị:
+   - Phân giải Hostname: Sử dụng Reverse DNS lookup (`socket.gethostbyaddr`) để 
+     lấy tên định danh của thiết bị trong mạng.
+   - Phân giải địa chỉ MAC: Tra cứu bảng ARP cache của hệ điều hành (`arp -a`) để 
+     trích xuất địa chỉ phần cứng (MAC Address) của từng thiết bị tìm thấy.
+   - Đo độ trễ (Ping latency): Tính toán thời gian phản hồi theo mili-giây (ms).
+e) Bảng hiển thị thiết bị (Device Table):
+   - Cột Trạng thái (Status): Huy hiệu màu xanh neon cho ONLINE, màu đỏ cho OFFLINE.
+   - Cột Địa chỉ IP (IP Address): Hiển thị font Monospace nổi bật.
+   - Cột Tên máy (Hostname): Tên thiết bị hoặc hiển thị N/A nếu không phân giải được.
+   - Cột Địa chỉ MAC (MAC Address): Định dạng chuẩn XX:XX:XX:XX:XX:XX.
+   - Cột Độ trễ (Ping): Mã hóa màu sắc thông minh:
+     * Dưới 50ms: Màu xanh lá (kết nối tuyệt vời).
+     * Từ 50ms - 200ms: Màu cam (kết nối trung bình).
+     * Trên 200ms: Màu đỏ (kết nối chậm/nghẽn).
+   - Cột Thời điểm thấy lần cuối (Last Seen): Ghi nhận mốc thời gian thiết bị xuất hiện.
+f) Tìm kiếm và Lọc dữ liệu tức thì:
+   - Ô tìm kiếm hỗ trợ lọc theo bất kỳ ký tự nào của IP, Hostname hoặc MAC.
+   - Hộp chọn lọc theo trạng thái: Tất cả (All), Chỉ Online, Chỉ Offline.
+g) Tự động đồng bộ CSDL:
+   - Mọi thiết bị tìm thấy được tự động cập nhật hoặc thêm mới vào bảng `devices` 
+     trong CSDL SQLite (`lan_manager.db`).
+
+
+--------------------------------------------------------------------------------
+3. QUẢN LÝ KẾT NỐI VÀ GIAO TIẾP MẠNG (CONNECTIONS PAGE)
+--------------------------------------------------------------------------------
+Đây là phân hệ trung tâm thể hiện các kỹ thuật lập trình Socket mạng. Gồm 6 tab:
+
+----------------------------------------------------
+Tab 3.1: KẾT NỐI ĐANG HOẠT ĐỘNG (ACTIVE CONNECTIONS)
+----------------------------------------------------
+- Mục tiêu: Giám sát toàn bộ các socket mạng TCP/UDP đang mở trên hệ điều hành máy tính.
+- Nguồn dữ liệu: Thu thập từ hệ thống thông qua thư viện `psutil.net_connections()`.
+- Các chức năng nhỏ:
+  + Nút "Refresh": Quét và cập nhật lại danh sách kết nối hiện tại.
+  + Bộ lọc giao thức: Cho phép xem "All", chỉ "TCP", hoặc chỉ "UDP".
+  + Ô tìm kiếm: Lọc nhanh theo tên phần mềm (Process name), mã tiến trình (PID), 
+    hoặc địa chỉ IP / Port.
+  + Bảng chi tiết kết nối gồm 8 thông số:
+    1. Local Address (Địa chỉ nguồn cục bộ).
+    2. Local Port (Cổng nguồn cục bộ).
+    3. Remote Address (Địa chỉ đích từ xa).
+    4. Remote Port (Cổng đích từ xa).
+    5. Protocol (Giao thức: TCP / UDP).
+    6. State (Trạng thái kết nối: ESTABLISHED, LISTEN, TIME_WAIT, CLOSE_WAIT...).
+    7. PID (Mã nhận diện tiến trình đang mở kết nối).
+    8. Process (Tên chương trình thực thi sở hữu kết nối, ví dụ: chrome.exe, python.exe).
+
+----------------------------------------------------
+Tab 3.2: MÁY CHỦ TCP (TCP SERVER)
+----------------------------------------------------
+- Mục tiêu: Khởi tạo một máy chủ TCP đa luồng lắng nghe các kết nối gửi đến trong LAN.
+- Cơ chế kỹ thuật: Chạy trên lớp `TCPServer(QThread)`, quản lý danh sách socket 
+  kết nối được bảo vệ bằng luồng `threading.Lock`.
+- Các chức năng nhỏ:
+  + Cấu hình Cổng (Port): Cho phép chọn cổng từ 1 đến 65535 (mặc định 5000).
+  + Nút "Start / Stop Server": Bật/tắt lắng nghe socket TCP trên địa chỉ 0.0.0.0.
+  + Đèn báo trạng thái: Hiển thị trạng thái máy chủ (Đang chạy / Đã dừng).
+  + Danh sách máy khách kết nối (Connected Clients): Hiển thị danh sách IP:Port 
+    của các máy trạm đang kết nối tới server thời gian thực. Tự động thêm khi có 
+    kết nối mới và xóa khi client ngắt kết nối.
+  + Nhật ký bản tin máy chủ (Server Messages): Ghi nhận toàn bộ sự kiện kết nối, 
+    ngắt kết nối và nội dung tin nhắn gửi từ các máy trạm kèm dấu thời gian.
+  + Gửi thông điệp quảng bá (Broadcast to All Clients): Cung cấp ô nhập và nút gửi 
+    để phát tán cùng một thông điệp tới tất cả các máy trạm đang kết nối đồng thời.
+
+----------------------------------------------------
+Tab 3.3: MÁY KHÁCH TCP (TCP CLIENT)
+----------------------------------------------------
+- Mục tiêu: Kết nối đến một máy chủ TCP bất kỳ trong mạng LAN để trao đổi dữ liệu.
+- Cơ chế kỹ thuật: Sử dụng lớp `TCPClient(QThread)` thực hiện kết nối socket hướng 
+  luồng (Stream socket).
+- Các chức năng nhỏ:
+  + Nhập Server IP: Địa chỉ IPv4 của máy chủ đích cần kết nối.
+  + Nhập Port: Cổng dịch vụ của máy chủ.
+  + Nút "Connect / Disconnect": Thực hiện bắt tay thiết lập hoặc giải phóng kết nối TCP.
+  + Nhãn trạng thái: Hiển thị trạng thái kết nối (Connected màu xanh / Disconnected).
+  + Khung nhật ký tin nhắn: Hiển thị lịch sử nhận dữ liệu từ server.
+  + Khung gửi tin nhắn: Nhập nội dung văn bản và nhấn "Send" (hoặc Enter) để truyền 
+    qua luồng TCP. Ô nhập tự động bật/tắt theo trạng thái kết nối.
+
+----------------------------------------------------
+Tab 3.4: GIAO THIẾP KHÔNG KẾT NỐI UDP (UDP TAB)
+----------------------------------------------------
+- Mục tiêu: Gửi và nhận các gói tin Datagram nhanh chóng mà không cần thiết lập 
+  phiên kết nối liên tục.
+- Cơ chế kỹ thuật: Sử dụng `socket(AF_INET, SOCK_DGRAM)`, chạy luồng lắng nghe nền.
+- Các chức năng nhỏ:
+  + Bộ lắng nghe UDP (UDP Listener):
+    * Cấu hình cổng lắng nghe (mặc định 5001).
+    * Nút bật/tắt lắng nghe ("Start / Stop Listener").
+    * Khung hiển thị tin nhắn UDP nhận được: Ghi rõ dữ liệu nhận kèm địa chỉ IP 
+      và cổng của bên gửi.
+  + Bộ gửi gói tin UDP (UDP Sender):
+    * Nhập Target IP và Target Port của máy nhận.
+    * Ô soạn thảo thông điệp và nút "Send".
+    * Cho phép bắn gói tin UDP đơn lẻ tức thì tới bất kỳ thiết bị nào đang mở cổng.
+
+----------------------------------------------------
+Tab 3.5: TRÒ CHUYỆN NỘI BỘ (LAN CHAT)
+----------------------------------------------------
+- Mục tiêu: Cung cấp phòng chat nhóm trực tiếp qua mạng LAN mà không cần Internet 
+  hay cài đặt phần mềm chat bên ngoài.
+- Cơ chế kỹ thuật:
+  + Hoạt động theo mô hình Client-Server dựa trên giao thức TCP.
+  + Dữ liệu đóng gói dưới định dạng JSON bao gồm: type, username, message, timestamp.
+- Các chức năng nhỏ:
+  + Tùy biến Username: Người dùng tự đặt tên hiển thị của mình trước khi chat.
+  + Chức năng Tạo phòng (Host Chat): Một máy tính trong LAN đóng vai trò Server 
+    lắng nghe trên cổng chỉ định (mặc định 5002).
+  + Chức năng Tham gia phòng (Join Chat): Các máy tính khác trong LAN chỉ cần nhập 
+    địa chỉ IP của máy Host và nhấn "Join Chat".
+  + Quản lý người dùng ra/vào: Tự động phát thông báo trong khung chat khi có người 
+    mới tham gia ("joined the chat") hoặc thoát phòng ("left the chat").
+  + Khung hiển thị chat phong phú (HTML-styled Chat Display):
+    * Phân biệt rõ ràng tên người gửi, thời gian gửi và nội dung tin nhắn.
+    * Tin nhắn của bản thân và tin nhắn của người khác được hiển thị với màu sắc 
+      và căn lề trực quan.
+  + Khung soạn tin nhắn: Hỗ trợ phím Enter để gửi nhanh.
+
+----------------------------------------------------
+Tab 3.6: TRUYỀN NHẬN TẬP TIN (FILE TRANSFER)
+----------------------------------------------------
+- Mục tiêu: Gửi và nhận tài liệu, hình ảnh, file dung lượng lớn giữa hai máy tính qua LAN.
+- Cơ chế giao thức độc quyền (Custom Protocol trên TCP):
+  + Bước 1: Bên gửi đóng gói Header JSON chứa thông tin: { "filename": ..., "file_size": ... }.
+  + Bước 2: Bên gửi truyền 4 byte đầu tiên chứa độ dài của Header (dạng số nguyên 
+    big-endian `>I`).
+  + Bước 3: Bên gửi truyền toàn bộ Header JSON.
+  + Bước 4: Bên nhận đọc 4 byte -> giải mã Header -> xác nhận tên file và kích thước.
+  + Bước 5: Bên gửi truyền luồng dữ liệu file được chia thành các mảnh nhỏ (Chunked 
+    8KB - 8192 bytes).
+  + Bước 6: Bên nhận đọc từng mảnh, ghi tuần tự vào đĩa cứng và phản hồi mã xác 
+    nhận ("OK").
+- Các chức năng nhỏ:
+  + Phần Nhận File (Receive Files):
+    * Cấu hình cổng nhận (mặc định 5003).
+    * Nút "Start Receiving" để chuyển sang chế độ sẵn sàng tiếp nhận file.
+    * Tự động lưu file vào thư mục `Downloads` của người dùng trên máy tính.
+    * Cơ chế chống ghi đè (Auto-rename on conflict): Nếu file đã tồn tại, tự động 
+      thêm hậu tố số đếm (ví dụ: `tailieu_1.pdf`, `tailieu_2.pdf`) để bảo vệ dữ liệu.
+    * Thanh tiến trình nhận file (ProgressBar).
+  + Phần Gửi File (Send File):
+    * Nhập địa chỉ Target IP và Target Port của máy nhận.
+    * Nút "Browse": Mở hộp thoại chọn file trên máy tính.
+    * Nút "Send": Bắt đầu tiến trình gửi dữ liệu.
+    * Thanh tiến trình gửi file (ProgressBar): Thể hiện % hoàn thành và số byte đã gửi.
+    * Đo lường tốc độ tức thì (Speed Label): Tính toán và hiển thị tốc độ truyền 
+      tập tin thời gian thực (KB/s, MB/s).
+  + Nhật ký truyền tải (Transfer Log): Ghi rõ lịch sử từng tệp tin đã truyền thành 
+    công hoặc các lỗi ngắt kết nối (disconnection error).
+
+
+--------------------------------------------------------------------------------
+4. GIÁM SÁT LƯU LƯỢNG MẠNG THỜI GIAN THỰC (NETWORK MONITOR)
+--------------------------------------------------------------------------------
+Mục tiêu: Cung cấp công cụ đo lường băng thông chuyên nghiệp, hỗ trợ phân tích độ 
+nghẽn mạng và hành vi tiêu thụ dữ liệu.
+
+Các chức năng nhỏ chi tiết:
+a) Biểu đồ lưu lượng sóng thời gian thực (TrafficChart Custom QPainter):
+   - Được thiết kế vẽ thủ công bằng Qt QPainter với độ mượt mà cao.
+   - Đồ thị Download (màu xanh Cyan) và Upload (màu xanh Neon) riêng biệt.
+   - Hiệu ứng phát sáng (Neon Glow Effect) và điểm chấm phát sáng tại giá trị hiện hành.
+   - Hiển thị giá trị tốc độ hiện tại và chỉ số đỉnh cao nhất (Peak Value).
+   - Trục tọa độ Y tự động co giãn (Auto-scaling) theo giá trị băng thông đạt được.
+   - Lưu trữ lịch sử 60 điểm dữ liệu gần nhất (tương ứng 60 giây).
+b) Lựa chọn card mạng giám sát:
+   - Hộp chọn (Dropdown) cho phép theo dõi tổng thể ("All Interfaces") hoặc lọc 
+     theo từng card mạng riêng biệt (Wi-Fi, Ethernet, Loopback, VPN adapter).
+c) Bảng chỉ số đo lường chi tiết:
+   - Download Speed: Tốc độ tải về hiện tại.
+   - Upload Speed: Tốc độ tải lên hiện tại.
+   - Total Received: Tổng dung lượng đã nhận qua card mạng.
+   - Total Sent: Tổng dung lượng đã truyền qua card mạng.
+   - Packets Received: Số lượng gói tin IP đã nhận.
+   - Packets Sent: Số lượng gói tin IP đã gửi.
+d) Các nút điều khiển:
+   - Nút "Pause / Resume": Cho phép đóng băng đồ thị để quan sát chỉ số tại một thời 
+     điểm nhất định, sau đó tiếp tục ghi nhận.
+   - Nút "Clear": Xóa toàn bộ lịch sử đồ thị và bắt đầu phiên đo mới.
+
+
+--------------------------------------------------------------------------------
+5. NHẬT KÝ HỆ THỐNG VÀ CHẨN ĐOÁN (LOGS PAGE)
+--------------------------------------------------------------------------------
+Mục tiêu: Đảm bảo khả năng kiểm soát (Auditability) và khắc phục sự cố (Troubleshooting) 
+cho mọi hoạt động diễn ra trong phần mềm.
+
+Các chức năng nhỏ chi tiết:
+a) Hệ thống ghi log kép (Dual Logging Mechanism):
+   - Ghi bền vững ra file đĩa cứng: `logs/app.log` có cơ chế tự động xoay vòng file 
+     (Rotating File Handler, tối đa 5MB) tránh tràn bộ nhớ.
+   - Ghi vào bộ nhớ đệm (In-memory ring buffer) để cấp dữ liệu trực tiếp cho giao diện.
+b) Bảng hiển thị sự kiện (Log Table):
+   - Cột Thời gian (Timestamp): Định dạng YYYY-MM-DD HH:MM:SS.
+   - Cột Cấp độ (Level): DEBUG (xám xanh), INFO (cyan), WARNING (cam), ERROR (đỏ).
+   - Cột Module nguồn: Xác định rõ chức năng nào phát sinh log (ví dụ: scanner, 
+     tcp_server, file_transfer).
+   - Cột Thông điệp (Message): Nội dung chi tiết của sự kiện hoặc lỗi ngoại lệ.
+c) Bộ lọc và Tìm kiếm:
+   - Hộp lọc cấp độ: "ALL", "DEBUG", "INFO", "WARNING", "ERROR".
+   - Ô tìm kiếm: Lọc văn bản theo từ khóa trong thông điệp.
+d) Các tiện ích bổ trợ:
+   - Nút "Refresh": Tải lại nhật ký (kết hợp chế độ tự động tải mỗi 3 giây).
+   - Nút "Export": Cho phép lưu toàn bộ log hiển thị ra file text (.txt) bên ngoài 
+     để gửi báo cáo.
+   - Nút "Clear": Xóa sạch nhật ký trong bộ nhớ hiển thị.
+
+
+--------------------------------------------------------------------------------
+6. CẤU HÌNH HỆ THỐNG (SETTINGS PAGE)
+--------------------------------------------------------------------------------
+Mục tiêu: Trao quyền cho người dùng cá nhân hóa toàn bộ hoạt động của ứng dụng.
+
+Các chức năng nhỏ chi tiết:
+a) Cấu hình Mạng (Network Settings):
+   - Scan Timeout: Điều chỉnh thời gian chờ phản hồi ping khi quét mạng (từ 1 đến 
+     30 giây).
+   - Default TCP Port: Đặt cổng mặc định cho máy chủ TCP (1 - 65535, mặc định 5000).
+   - Default UDP Port: Đặt cổng mặc định cho bộ lắng nghe UDP (1 - 65535, mặc định 5001).
+   - Scan Threads: Điều chỉnh số luồng quét đồng thời (từ 10 đến 200 luồng, mặc 
+     định 50 luồng). Số luồng càng cao quét càng nhanh nhưng tiêu tốn tài nguyên hơn.
+b) Cấu hình Giao diện (Appearance):
+   - Hỗ trợ 2 chủ đề: "dark" (Giao diện tối phong cách công nghệ cao) và "light" 
+     (Giao diện sáng thanh lịch phong cách GitHub).
+   - Chuyển đổi giao diện ngay lập tức thông qua cơ chế Signal `theme_changed`.
+c) Cấu hình Ghi log (Logging Settings):
+   - Log Level: Chọn ngưỡng ghi log (DEBUG, INFO, WARNING, ERROR).
+   - Nút "Clear All Logs": Xóa dữ liệu log kèm hộp thoại xác nhận an toàn (QMessageBox).
+d) Quản lý Cơ sở dữ liệu (Database Management):
+   - Hiển thị đường dẫn tuyệt đối tới file SQLite hiện tại (`data/lan_manager.db`).
+   - Nút "Backup Database": Sao lưu toàn bộ cấu trúc bảng, danh sách thiết bị và 
+     lịch sử sang một file sao lưu `.db` mới với tên tệp đính kèm mốc thời gian 
+     (timestamp).
+e) Nút "Save Settings":
+   - Lưu trữ vĩnh viễn các thông số vào bảng `settings` trong CSDL để tự động nạp 
+     lại trong các lần khởi động tiếp theo.
+
+
+--------------------------------------------------------------------------------
+7. HỆ THỐNG GIAO DIỆN & TRẢI NGHIỆM NGƯỜI DÙNG (UI/UX)
+--------------------------------------------------------------------------------
+Mục tiêu: Đem lại giao diện chuyên nghiệp, mượt mà và trực quan.
+
+Các chức năng nhỏ chi tiết:
+a) Thanh điều hướng bên (Sidebar Navigation):
+   - Bố cục khoa học với các icon trực quan cho từng trang: Dashboard, Devices, 
+     Connections, Monitor, Logs, Settings.
+   - Tự động đánh dấu trang đang hoạt động.
+b) Hộp thông báo nổi động (Animated Toast Notifications):
+   - Hiển thị ở góc trên bên phải màn hình khi có sự kiện quan trọng.
+   - Phân loại rõ ràng theo 4 dạng:
+     * Success (Thành công - màu xanh lá, icon ✅).
+     * Error (Lỗi - màu đỏ, icon ❌).
+     * Warning (Cảnh báo - màu cam, icon ⚠️).
+     * Info (Thông tin - màu xanh cyan, icon ℹ️).
+   - Tự động trượt vào và tự ẩn sau 4 giây (kèm nút tắt nhanh ✕).
+c) Cơ chế Đa luồng bảo vệ giao diện (Non-blocking GUI):
+   - Tất cả các tác vụ như Ping mạng, Quét Subnet, Khởi động TCP Server, Gửi/Nhận 
+     File và Đọc card mạng đều được tách riêng vào các QThread và ThreadPoolExecutor.
+   - Giao tiếp giữa luồng nền và luồng giao diện chính được đảm bảo 100% qua Qt 
+     Signal/Slot, ngăn chặn triệt để tình trạng ứng dụng bị "Not Responding".
+
+
+================================================================================
+PHẦN 4: HƯỚNG DẪN CẤU HÌNH TƯỜNG LỬA (FIREWALL) & KIỂM THỬ THỰC TẾ
+================================================================================
+
+1. Cấu hình Tường lửa Windows (Windows Firewall):
+   Để các máy tính khác trong mạng LAN có thể kết nối đến máy tính chạy phần mềm, 
+   cần mở các cổng tương ứng (chạy PowerShell dưới quyền Administrator):
+
+   - Cho phép TCP Server (Cổng 5000):
+     netsh advfirewall firewall add rule name="LAN Manager TCP" dir=in action=allow protocol=TCP localport=5000
+
+   - Cho phép UDP Listener (Cổng 5001):
+     netsh advfirewall firewall add rule name="LAN Manager UDP" dir=in action=allow protocol=UDP localport=5001
+
+   - Cho phép LAN Chat (Cổng 5002):
+     netsh advfirewall firewall add rule name="LAN Manager Chat" dir=in action=allow protocol=TCP localport=5002
+
+   - Cho phép Truyền File (Cổng 5003):
+     netsh advfirewall firewall add rule name="LAN Manager File" dir=in action=allow protocol=TCP localport=5003
+
+2. Kịch bản kiểm thử giữa 2 máy tính trong cùng mạng LAN:
+   - Giả sử Máy A có IP là 192.168.1.10, Máy B có IP là 192.168.1.11.
+   
+   a) Thử nghiệm Chat nội bộ:
+      * Máy A: Vào tab Chat -> Nhập tên "Alice" -> Nhấn "Host Chat" (Cổng 5002).
+      * Máy B: Vào tab Chat -> Nhập tên "Bob" -> Nhập IP Máy A (192.168.1.10) -> Nhấn "Join Chat".
+      * Kết quả: Hai máy trò chuyện trực tiếp qua lại với nhau tức thì.
+
+   b) Thử nghiệm Truyền nhận File:
+      * Máy A: Vào tab File Transfer -> Nhấn "Start Receiving" (Cổng 5003).
+      * Máy B: Nhập IP Máy A (192.168.1.10) -> Nhấn "Browse" chọn file -> Nhấn "Send".
+      * Kết quả: File từ Máy B được chuyển sang Máy A và tự động lưu vào thư mục 
+        Downloads của Máy A kèm thanh tiến trình và đo tốc độ.
+
+   c) Thử nghiệm Quét thiết bị:
+      * Mở trang Devices -> Chọn "Auto-detect Subnet" -> Nhấn "Scan Network".
+      * Kết quả: Toàn bộ danh sách các máy tính, điện thoại, router trong phòng sẽ 
+        hiển thị đầy đủ IP, MAC, Hostname và độ trễ.
+
+================================================================================
+KẾT LUẬN
+================================================================================
+LAN Connection Manager là một giải pháp phần mềm quản lý và tương tác mạng nội bộ 
+toàn diện, hoàn chỉnh về mặt kiến trúc phần mềm, chỉn chu về mặt mỹ thuật giao diện 
+và tối ưu về hiệu năng lập trình mạng với Python và Qt.
+================================================================================
