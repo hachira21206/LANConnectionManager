@@ -183,7 +183,7 @@ class MainWindow(QMainWindow):
         self._pages['dashboard'] = DashboardPage(
             self.device_service, self.monitoring_service, self.traffic_monitor
         )
-        self._pages['devices'] = DevicesPage(self.device_service)
+        self._pages['devices'] = DevicesPage(self.device_service, self.db)
         self._pages['connections'] = ConnectionsPage(
             self.connection_service, self.monitoring_service
         )

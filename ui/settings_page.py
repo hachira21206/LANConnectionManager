@@ -92,22 +92,6 @@ class SettingsPage(QWidget):
 
         layout.addWidget(appearance_group)
 
-        # ─── Logging ────────────────────────────
-        log_group = QGroupBox("📋  Logging")
-        log_form = QFormLayout(log_group)
-        log_form.setSpacing(12)
-
-        self._log_level = QComboBox()
-        self._log_level.addItems(["DEBUG", "INFO", "WARNING", "ERROR"])
-        self._log_level.setCurrentText("INFO")
-        log_form.addRow("Log Level:", self._log_level)
-
-        clear_logs_btn = QPushButton("🗑️ Clear All Logs")
-        clear_logs_btn.setObjectName("danger_button")
-        clear_logs_btn.clicked.connect(self._clear_logs)
-        log_form.addRow("", clear_logs_btn)
-
-        layout.addWidget(log_group)
 
         # ─── Database ───────────────────────────
         db_group = QGroupBox("🗄️  Database")
@@ -160,9 +144,7 @@ class SettingsPage(QWidget):
             self._theme_combo.setCurrentText(
                 self._settings_repo.get("theme", "dark")
             )
-            self._log_level.setCurrentText(
-                self._settings_repo.get("log_level", "INFO")
-            )
+
         except Exception as e:
             logger.error("Error loading settings: %s", e)
 
@@ -184,13 +166,7 @@ class SettingsPage(QWidget):
             self._settings_repo.set(
                 "theme", self._theme_combo.currentText(), "appearance"
             )
-            self._settings_repo.set(
-                "log_level", self._log_level.currentText(), "logging"
-            )
 
-            # Apply log level
-            log_level = self._log_level.currentText()
-            logging.getLogger().setLevel(getattr(logging, log_level))
 
             self.show_toast.emit("Settings saved successfully", "success")
             logger.info("Settings saved")
@@ -203,19 +179,7 @@ class SettingsPage(QWidget):
         """Handle theme selection change."""
         self.theme_changed.emit(theme)
 
-    def _clear_logs(self) -> None:
-        """Clear all logs with confirmation."""
-        reply = QMessageBox.question(
-            self, "Clear Logs",
-            "Are you sure you want to clear all logs?",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No
-        )
-        if reply == QMessageBox.Yes:
-            from utils.logger import memory_handler
-            memory_handler.clear()
-            logger.info("Logs cleared from settings")
-            self.show_toast.emit("Logs cleared", "success")
+
 
     def _backup_database(self) -> None:
         """Create a database backup."""

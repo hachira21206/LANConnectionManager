@@ -10,6 +10,9 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor, QFont, QBrush
 
+from typing import Optional
+from database.database import DatabaseManager
+from database.repository import SettingsRepository
 from services.device_service import DeviceService
 from network.scanner import LANScanner
 from network.network_utils import get_active_interface, get_subnet_info
@@ -24,9 +27,11 @@ class DevicesPage(QWidget):
 
     show_toast = Signal(str, str)
 
-    def __init__(self, device_service: DeviceService, parent=None):
+    def __init__(self, device_service: DeviceService, db: Optional[DatabaseManager] = None, parent=None):
         super().__init__(parent)
         self._device_service = device_service
+        self._db = db or getattr(getattr(device_service, 'repo', None), 'db', None)
+        self._settings_repo = SettingsRepository(self._db) if self._db else None
         self._scanner = LANScanner()
         self._is_scanning = False
 
@@ -194,22 +199,35 @@ class DevicesPage(QWidget):
         self._subnet_row_widget.setVisible(index == 1)
         self._range_row_widget.setVisible(index == 2)
 
+    def _get_scan_config(self) -> tuple[float, int]:
+        """Get scan timeout and thread count from settings or defaults."""
+        timeout = 1.0
+        thread_count = 50
+        if self._settings_repo:
+            try:
+                timeout = float(self._settings_repo.get("scan_timeout", "1"))
+                thread_count = int(self._settings_repo.get("scan_threads", "50"))
+            except (ValueError, TypeError) as e:
+                logger.warning("Error reading scan settings, using defaults: %s", e)
+        return timeout, thread_count
+
     def _start_scan(self) -> None:
         """Start network scanning."""
         if self._is_scanning:
             return
 
         mode = self._scan_mode.currentIndex()
+        timeout, thread_count = self._get_scan_config()
 
         if mode == 0:
             # Auto-detect
-            self._scanner.configure(timeout=1.0, thread_count=50)
+            self._scanner.configure(timeout=timeout, thread_count=thread_count)
         elif mode == 1:
             subnet = self._subnet_input.text().strip()
             if not validate_subnet(subnet):
                 self.show_toast.emit("Invalid subnet format. Use CIDR (e.g., 192.168.1.0/24)", "error")
                 return
-            self._scanner.configure(subnet=subnet, timeout=1.0, thread_count=50)
+            self._scanner.configure(subnet=subnet, timeout=timeout, thread_count=thread_count)
         elif mode == 2:
             start = self._start_ip.text().strip()
             end = self._end_ip.text().strip()
@@ -217,7 +235,7 @@ class DevicesPage(QWidget):
                 self.show_toast.emit("Invalid IP address format", "error")
                 return
             self._scanner.configure(start_ip=start, end_ip=end,
-                                    timeout=1.0, thread_count=50)
+                                    timeout=timeout, thread_count=thread_count)
 
         self._is_scanning = True
         self._scan_btn.setEnabled(False)

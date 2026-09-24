@@ -367,15 +367,12 @@ b) Cấu hình Giao diện (Appearance):
    - Hỗ trợ 2 chủ đề: "dark" (Giao diện tối phong cách công nghệ cao) và "light" 
      (Giao diện sáng thanh lịch phong cách GitHub).
    - Chuyển đổi giao diện ngay lập tức thông qua cơ chế Signal `theme_changed`.
-c) Cấu hình Ghi log (Logging Settings):
-   - Log Level: Chọn ngưỡng ghi log (DEBUG, INFO, WARNING, ERROR).
-   - Nút "Clear All Logs": Xóa dữ liệu log kèm hộp thoại xác nhận an toàn (QMessageBox).
-d) Quản lý Cơ sở dữ liệu (Database Management):
+c) Quản lý Cơ sở dữ liệu (Database Management):
    - Hiển thị đường dẫn tuyệt đối tới file SQLite hiện tại (`data/lan_manager.db`).
    - Nút "Backup Database": Sao lưu toàn bộ cấu trúc bảng, danh sách thiết bị và 
      lịch sử sang một file sao lưu `.db` mới với tên tệp đính kèm mốc thời gian 
      (timestamp).
-e) Nút "Save Settings":
+d) Nút "Save Settings":
    - Lưu trữ vĩnh viễn các thông số vào bảng `settings` trong CSDL để tự động nạp 
      lại trong các lần khởi động tiếp theo.
 
